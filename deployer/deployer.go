@@ -14,16 +14,18 @@ type GitHubDeployer struct {
 	LocalDir      string // 克隆到本地的目录
 	ImageName     string // 构建的Docker镜像名称
 	ContainerName string // 运行的容器名称
+	PortMapping   string
 }
 
 // NewGitHubDeployer 构造函数，初始化部署器
-func NewGitHubDeployer(repoURL, imageName, containerName string) *GitHubDeployer {
+func NewGitHubDeployer(repoURL, imageName, containerName, branch, portMapping string) *GitHubDeployer {
 	return &GitHubDeployer{
 		RepoURL:       repoURL,
-		Branch:        "main", // 默认分支
+		Branch:        branch, // 默认分支
 		LocalDir:      "",     // 默认为空，自动设置
 		ImageName:     imageName,
 		ContainerName: containerName,
+		PortMapping:   portMapping,
 	}
 }
 
@@ -152,15 +154,14 @@ func (d *GitHubDeployer) RunDockerContainer() error {
 	}
 
 	// 4. 运行新容器（带端口映射）
-	portMapping := "8080:8080" // 可配置化
-	runCmd := exec.Command("docker", "run", "--name", d.ContainerName, "-d", "-p", portMapping, d.ImageName)
+	runCmd := exec.Command("docker", "run", "--name", d.ContainerName, "-d", "-p", d.PortMapping, d.ImageName)
 	runCmd.Stdout = os.Stdout
 	runCmd.Stderr = os.Stderr
 	if err := runCmd.Run(); err != nil {
 		return fmt.Errorf("运行新容器 %s 失败: %v", d.ContainerName, err)
 	}
 
-	fmt.Printf("🚀 已运行新容器: %s (基于镜像: %s)，端口映射: %s\n", d.ContainerName, d.ImageName, portMapping)
+	fmt.Printf("🚀 已运行新容器: %s (基于镜像: %s)，端口映射: %s\n", d.ContainerName, d.ImageName, d.PortMapping)
 	return nil
 }
 
