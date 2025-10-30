@@ -6,7 +6,7 @@ import (
 )
 
 func main() {
-	repoURL := ""
+	repoURL := "https://github.com/PengJingzhao/test-deploy.git"
 	imageName := "hello"
 	containerName := "hello-container"
 

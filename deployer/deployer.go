@@ -137,7 +137,7 @@ func splitGitHubURL(url string) []string {
 	// 简单实现，仅支持 https://github.com/username/repo.git 或 https://github.com/username/repo
 	url = trimGitSuffix(url)
 	parts := splitPath(url)
-	if len(parts) >= 3 && parts[0] == "https:" && parts[1] == "" && parts[2] == "github.com" {
+	if len(parts) >= 3 && parts[0] == "https:" && parts[1] == "github.com" {
 		return []string{parts[2], parts[3]}
 	}
 	return []string{}
