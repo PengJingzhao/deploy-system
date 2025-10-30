@@ -22,4 +22,7 @@ func DeployHandler(ctx *gin.Context) {
 			"error": err.Error(),
 		})
 	}
+	ctx.JSON(http.StatusOK, gin.H{
+		"message": "deploy success",
+	})
 }
