@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 )
 
 // GitHubDeployer 类似一个“类”，负责拉取github项目、构建镜像、运行容器
@@ -113,22 +114,53 @@ func (d *GitHubDeployer) BuildDockerImage() error {
 	return nil
 }
 
-// RunDockerContainer 运行容器
+// RunDockerContainer 运行容器（先停止并移除旧的同名容器，再运行新的）
 func (d *GitHubDeployer) RunDockerContainer() error {
 	if d.ContainerName == "" {
 		d.ContainerName = d.ImageName + "-container"
 	}
 
-	// 可以根据需要添加端口映射、环境变量等参数
-	// 例如：docker run -d --name mycontainer -p 8080:80 myimage
-	runCmd := exec.Command("docker", "run", "--name", d.ContainerName, "-d", d.ImageName)
+	// 1. 检查是否已有同名容器存在（包括已停止的）
+	checkCmd := exec.Command("docker", "ps", "-a", "--filter", "name="+d.ContainerName, "--format", "{{.Names}}")
+	output, err := checkCmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("检查容器是否存在失败: %v, 输出: %s", err, output)
+	}
+
+	containerList := string(output)
+	containerExists := strings.Contains(containerList, d.ContainerName)
+
+	if containerExists {
+		// 2. 如果存在则先停止
+		fmt.Printf("⚠️ 发现已存在的容器: %s，准备停止并移除...\n", d.ContainerName)
+		stopCmd := exec.Command("docker", "stop", d.ContainerName)
+		stopCmd.Stdout = os.Stdout
+		stopCmd.Stderr = os.Stderr
+		if err := stopCmd.Run(); err != nil {
+			fmt.Printf("⚠️ 停止容器 %s 时出错（可能已停止）: %v\n", d.ContainerName, err)
+		}
+
+		// 3. 移除容器
+		rmCmd := exec.Command("docker", "rm", d.ContainerName)
+		rmCmd.Stdout = os.Stdout
+		rmCmd.Stderr = os.Stderr
+		if err := rmCmd.Run(); err != nil {
+			return fmt.Errorf("移除容器 %s 失败: %v", d.ContainerName, err)
+		}
+
+		fmt.Printf("✅ 已移除旧容器: %s\n", d.ContainerName)
+	}
+
+	// 4. 运行新容器（带端口映射）
+	portMapping := "8080:8080" // 可配置化
+	runCmd := exec.Command("docker", "run", "--name", d.ContainerName, "-d", "-p", portMapping, d.ImageName)
 	runCmd.Stdout = os.Stdout
 	runCmd.Stderr = os.Stderr
 	if err := runCmd.Run(); err != nil {
-		return err
+		return fmt.Errorf("运行新容器 %s 失败: %v", d.ContainerName, err)
 	}
 
-	fmt.Printf("🚀 已运行容器: %s (基于镜像: %s)\n", d.ContainerName, d.ImageName)
+	fmt.Printf("🚀 已运行新容器: %s (基于镜像: %s)，端口映射: %s\n", d.ContainerName, d.ImageName, portMapping)
 	return nil
 }
 
