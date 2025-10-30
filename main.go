@@ -19,7 +19,7 @@ func main() {
 		MaxAge:           12 * time.Hour, // 预检请求缓存时间
 	}))
 	api.RegisterApi(engine)
-	err := engine.Run("localhost:9099")
+	err := engine.Run("0.0.0.0:9099")
 	if err != nil {
 		log.Fatal(err)
 	}
