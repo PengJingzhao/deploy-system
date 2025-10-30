@@ -1,0 +1,125 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Deployment Service API",
+    "version": "1.0.0",
+    "description": "API for handling application deployment based on source code and container configurations."
+  },
+  "paths": {
+    "/deploy": {
+      "post": {
+        "summary": "触发应用部署",
+        "description": "根据提供的 Git 仓库地址、分支、Docker 镜像、容器名称及端口映射等信息，执行自动化部署流程。",
+        "operationId": "deployApplication",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeployReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "部署请求已成功接收，后续可通过其他接口查询部署状态。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Deployment triggered successfully."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求参数不合法或缺少必填字段。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "Missing required field: repo_url"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务端内部错误，部署任务未能启动。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "Internal server error during deployment."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "DeployReq": {
+        "type": "object",
+        "properties": {
+          "repo_url": {
+            "type": "string",
+            "description": "Git 仓库地址，例如：https://github.com/user/repo.git",
+            "example": "https://github.com/example/app.git"
+          },
+          "branch": {
+            "type": "string",
+            "description": "要部署的分支名称，例如：main 或 dev",
+            "example": "main"
+          },
+          "local_dir": {
+            "type": "string",
+            "description": "本地代码目录（可选，视具体业务逻辑而定）",
+            "example": "./src",
+            "nullable": true
+          },
+          "image_name": {
+            "type": "string",
+            "description": "构建或使用的 Docker 镜像名称，例如：myapp:latest",
+            "example": "myapp:1.0.0"
+          },
+          "container_name": {
+            "type": "string",
+            "description": "运行容器的名称，例如：myapp-container",
+            "example": "myapp-prod"
+          },
+          "port_mapping": {
+            "type": "string",
+            "description": "容器端口映射，格式为 '主机端口:容器端口'，例如：'8080:80'",
+            "example": "8080:80"
+          }
+        },
+        "required": [
+          "repo_url",
+          "branch",
+          "image_name",
+          "container_name",
+          "port_mapping"
+        ],
+        "additionalProperties": false
+      }
+    }
+  }
+}
