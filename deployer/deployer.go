@@ -76,9 +76,13 @@ func (d *GitHubDeployer) CloneRepo() error {
 		}
 	}
 
-	// 如果目录已存在，可选择删除或跳过。这里简单起见，报错提示。
 	if _, err := os.Stat(d.LocalDir); err == nil {
-		return fmt.Errorf("本地目录 %s 已存在，请删除或选择其他目录", d.LocalDir)
+		// 目录已存在，先删除
+		fmt.Printf("⚠️ 本地目录 %s 已存在，准备删除旧目录...\n", d.LocalDir)
+		if err := os.RemoveAll(d.LocalDir); err != nil {
+			return fmt.Errorf("删除旧目录 %s 失败: %v", d.LocalDir, err)
+		}
+		fmt.Printf("✅ 已删除旧目录: %s\n", d.LocalDir)
 	}
 
 	// 执行 git clone
