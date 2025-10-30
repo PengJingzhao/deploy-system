@@ -1,11 +1,20 @@
 package deployer
 
 import (
+	logger "deploy-system/log"
 	"fmt"
+	"go.uber.org/zap"
 	"os"
 	"os/exec"
 	"strings"
 )
+
+var log *logger.Logger
+
+func init() {
+	log = logger.NewLogger()
+	defer log.SyncLogger() // 确保程序退出前刷新日志缓冲
+}
 
 // GitHubDeployer 类似一个“类”，负责拉取github项目、构建镜像、运行容器
 type GitHubDeployer struct {
@@ -53,7 +62,7 @@ func (d *GitHubDeployer) Deploy() error {
 		return fmt.Errorf("运行Docker容器失败: %v", err)
 	}
 
-	fmt.Println("✅ 部署成功！")
+	log.InfoWith("deploy", zap.String("message", "部署成功"))
 	return nil
 }
 
@@ -78,11 +87,11 @@ func (d *GitHubDeployer) CloneRepo() error {
 
 	if _, err := os.Stat(d.LocalDir); err == nil {
 		// 目录已存在，先删除
-		fmt.Printf("⚠️ 本地目录 %s 已存在，准备删除旧目录...\n", d.LocalDir)
+		log.WarnWith("exist", zap.String("message", fmt.Sprintf("⚠️ 本地目录 %s 已存在，准备删除旧目录...", d.LocalDir)))
 		if err := os.RemoveAll(d.LocalDir); err != nil {
 			return fmt.Errorf("删除旧目录 %s 失败: %v", d.LocalDir, err)
 		}
-		fmt.Printf("✅ 已删除旧目录: %s\n", d.LocalDir)
+		log.WarnWith("delete", zap.String("message", fmt.Sprintf("✅ 已删除旧目录: %s\n", d.LocalDir)))
 	}
 
 	// 执行 git clone
@@ -93,7 +102,7 @@ func (d *GitHubDeployer) CloneRepo() error {
 		return err
 	}
 
-	fmt.Printf("📥 已克隆仓库到目录: %s\n", d.LocalDir)
+	log.InfoWith("clone", zap.String("message", fmt.Sprintf("📥 已克隆仓库到目录: %s\n", d.LocalDir)))
 	return nil
 }
 
@@ -116,7 +125,7 @@ func (d *GitHubDeployer) BuildDockerImage() error {
 		return err
 	}
 
-	fmt.Printf("🐳 已构建 Docker 镜像: %s\n", d.ImageName)
+	log.InfoWith("build", zap.String("message", fmt.Sprintf("🐳 已构建 Docker 镜像: %s\n", d.ImageName)))
 	return nil
 }
 
@@ -138,12 +147,13 @@ func (d *GitHubDeployer) RunDockerContainer() error {
 
 	if containerExists {
 		// 2. 如果存在则先停止
-		fmt.Printf("⚠️ 发现已存在的容器: %s，准备停止并移除...\n", d.ContainerName)
+		log.WarnWith("stop", zap.String("message", fmt.Sprintf("⚠️ 发现已存在的容器: %s，准备停止并移除...\n", d.ContainerName)))
+
 		stopCmd := exec.Command("docker", "stop", d.ContainerName)
 		stopCmd.Stdout = os.Stdout
 		stopCmd.Stderr = os.Stderr
 		if err := stopCmd.Run(); err != nil {
-			fmt.Printf("⚠️ 停止容器 %s 时出错（可能已停止）: %v\n", d.ContainerName, err)
+			log.ErrorWith("stop", zap.String("message", fmt.Sprintf("⚠️ 停止容器 %s 时出错（可能已停止）: %v\n", d.ContainerName, err)))
 		}
 
 		// 3. 移除容器
@@ -154,7 +164,8 @@ func (d *GitHubDeployer) RunDockerContainer() error {
 			return fmt.Errorf("移除容器 %s 失败: %v", d.ContainerName, err)
 		}
 
-		fmt.Printf("✅ 已移除旧容器: %s\n", d.ContainerName)
+		log.InfoWith("rm", zap.String("message", fmt.Sprintf("✅ 已移除旧容器: %s\n", d.ContainerName)))
+
 	}
 
 	// 4. 运行新容器（带端口映射）
@@ -165,7 +176,8 @@ func (d *GitHubDeployer) RunDockerContainer() error {
 		return fmt.Errorf("运行新容器 %s 失败: %v", d.ContainerName, err)
 	}
 
-	fmt.Printf("🚀 已运行新容器: %s (基于镜像: %s)，端口映射: %s\n", d.ContainerName, d.ImageName, d.PortMapping)
+	log.InfoWith("run", zap.String("message", fmt.Sprintf("🚀 已运行新容器: %s (基于镜像: %s)，端口映射: %s\n", d.ContainerName, d.ImageName, d.PortMapping)))
+
 	return nil
 }
 
